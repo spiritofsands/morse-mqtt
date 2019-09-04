@@ -30,20 +30,27 @@ class BufferedMean:
 class Camera:
     def __init__(self):
         self.capture = cv2.VideoCapture(0)
-        self.brightness = BufferedMean(100)
-        self.brightness_thread = None
-        self.stop = threading.Event()
+        self._brightness = BufferedMean(100)
+        self._brightness_thread = None
+        self._stop = threading.Event()
+        self._light_on = deque(maxlen=1)
 
     def __del__(self):
         self.stop_thread.set()
         self.capture.release()
 
+    def is_light_on(self):
+        try:
+            return self._light_on[0]
+        except IndexError:
+            return False
+
     def stream_brightness(self, binary_threshold=250, light_threshold=1.2):
-        if self.brightness_thread is not None:
+        if self._brightness_thread is not None:
             return
 
         def capture_brightness_impl(binary_threshold, light_threshold):
-            while not self.stop.is_set():
+            while not self._stop.is_set():
                 # Capture frame
                 _, frame = self.capture.read()
 
@@ -57,13 +64,15 @@ class Camera:
                 # Get greyscale 'brightness' sum
                 v, _, _, _ = cv2.sumElems(thresh)
 
-                self.brightness.push(v)
+                self._brightness.push(v)
 
-                is_light_on = (v / self.brightness.mean()) > light_threshold
-
+                # Push to the current light status to the 1-element queue
+                self._light_on.append(
+                    (v / self._brightness.mean()) > light_threshold
+                        )
                 print("ON? {} count: {}, background: {}, value: {}".format(
-                    is_light_on, self.brightness.count,
-                    int(self.brightness.mean()), int(v)))
+                    self.is_light_on(), self._brightness.count,
+                    int(self._brightness.mean()), int(v)))
 
         self.brightness_thread = threading.Thread(
             target=capture_brightness_impl,
@@ -78,3 +87,5 @@ if __name__ == '__main__':
 
     while True:
         pass
+        #if c.is_light_on():
+        #    print("1")
