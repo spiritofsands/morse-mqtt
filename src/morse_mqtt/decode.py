@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import itertools
 import morse_talk as mtalk
 from typing import NamedTuple
 
@@ -13,19 +14,20 @@ class Pulse(NamedTuple):
 
 
 def decode_pulses(pulses):
-    min_duration = min(p.duration() for p in pulses)
+    gaps = [p1.on - p0.off for (p0, p1) in zip(pulses[:-1], pulses[1:])]
+    min_duration = min(gaps)
+
+    assert(len(pulses) == len(gaps) + 1)
+
+    gaps = (g // min_duration for g in gaps)
+    pulse_durations = (p.duration() // min_duration for p in pulses)
 
     binary_encoding = []
-    prev_pulse = None
-    for p in pulses:
-        if prev_pulse is not None:
-            gap_width = p.on - prev_pulse.off
-            binary_encoding.extend([0] * gap_width)
+    for (width_1, width_0) in itertools.zip_longest(pulse_durations, gaps, fillvalue=None):
+        binary_encoding.extend([1]*width_1)
 
-        pulse_width = p.duration() // min_duration
-        binary_encoding.extend([1] * pulse_width)
-
-        prev_pulse = p
+        if width_0 is not None:
+            binary_encoding.extend([0]*width_0)
 
     return mtalk.decode(''.join(map(str, binary_encoding)),
                         encoding_type='binary')
