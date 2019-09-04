@@ -14,13 +14,21 @@ class Pulse(NamedTuple):
 
 
 def decode_pulses(pulses):
+    if not pulses:
+        return
+
     gaps = [p1.on - p0.off for (p0, p1) in zip(pulses[:-1], pulses[1:])]
-    min_duration = min(gaps)
+
+    if not gaps:
+        # single character, either `e` or `t`
+        min_duration = pulses[0].duration()
+    else:
+        min_duration = min(gaps)
 
     assert(len(pulses) == len(gaps) + 1)
 
-    gaps = (g // min_duration for g in gaps)
-    pulse_durations = (p.duration() // min_duration for p in pulses)
+    gaps = (int(round(g / min_duration)) for g in gaps)
+    pulse_durations = (int(round(p.duration() / min_duration)) for p in pulses)
 
     binary_encoding = []
     for (width_1, width_0) in itertools.zip_longest(pulse_durations, gaps, fillvalue=None):
@@ -28,9 +36,11 @@ def decode_pulses(pulses):
 
         if width_0 is not None:
             binary_encoding.extend([0]*width_0)
-
-    return mtalk.decode(''.join(map(str, binary_encoding)),
-                        encoding_type='binary')
+    try:
+        return mtalk.decode(''.join(map(str, binary_encoding)),
+                            encoding_type='binary')
+    except KeyError:
+        return 'Err: decode failure'
 
 
 if __name__ == "__main__":
