@@ -2,23 +2,31 @@
 # -*- coding: utf-8 -*-
 import cv2
 
+
+class Camera:
+    def __init__(self):
+        self.capture = cv2.VideoCapture(0)
+
+    def __del__(self):
+        self.capture.release()
+
+    def stream_brightness(self, threshold=250):
+        while True:
+            # Capture frame
+            _, frame = self.capture.read()
+
+            # Convert frame to grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            # Binary threshold the frame
+            _, thresh = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
+
+            # Get greyscale 'brightness' sum
+            v, _, _, _ = cv2.sumElems(thresh)
+
+            print(v)
+
+
 if __name__ == '__main__':
-    capture = cv2.VideoCapture(0)
-
-    while (True):
-        # Capture frame-by-frame
-        ret, frame = capture.read()
-
-        # Our operations on the frame come here
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 250, 255, cv2.THRESH_BINARY)
-
-        # Print out a greyscale 'brightness' sum
-        print(cv2.sumElems(thresh)[0])
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    # When everything done, release the capture
-    cap.release()
-    cv2.destroyAllWindows()
+    c = Camera()
+    c.stream_brightness()
