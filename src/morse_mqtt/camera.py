@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from collections import deque
+import threading
 import cv2
 
 
@@ -30,34 +31,50 @@ class Camera:
     def __init__(self):
         self.capture = cv2.VideoCapture(0)
         self.brightness = BufferedMean(100)
+        self.brightness_thread = None
+        self.stop = threading.Event()
 
     def __del__(self):
+        self.stop_thread.set()
         self.capture.release()
 
     def stream_brightness(self, binary_threshold=250, light_threshold=1.2):
-        while True:
-            # Capture frame
-            _, frame = self.capture.read()
+        if self.brightness_thread is not None:
+            return
 
-            # Convert frame to grayscale
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        def capture_brightness_impl(binary_threshold, light_threshold):
+            while not self.stop.is_set():
+                # Capture frame
+                _, frame = self.capture.read()
 
-            # Binary threshold the frame
-            _, thresh = cv2.threshold(gray, binary_threshold, 255,
-                                      cv2.THRESH_BINARY)
+                # Convert frame to grayscale
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-            # Get greyscale 'brightness' sum
-            v, _, _, _ = cv2.sumElems(thresh)
+                # Binary threshold the frame
+                _, thresh = cv2.threshold(gray, binary_threshold, 255,
+                                          cv2.THRESH_BINARY)
 
-            self.brightness.push(v)
+                # Get greyscale 'brightness' sum
+                v, _, _, _ = cv2.sumElems(thresh)
 
-            is_light_on = (v / self.brightness.mean()) > light_threshold
+                self.brightness.push(v)
 
-            print("ON? {} count: {}, background: {}, value: {}".format(
-                is_light_on, self.brightness.count,
-                int(self.brightness.mean()), int(v)))
+                is_light_on = (v / self.brightness.mean()) > light_threshold
+
+                print("ON? {} count: {}, background: {}, value: {}".format(
+                    is_light_on, self.brightness.count,
+                    int(self.brightness.mean()), int(v)))
+
+        self.brightness_thread = threading.Thread(
+            target=capture_brightness_impl,
+            args=(binary_threshold, light_threshold))
+        self.brightness_thread.daemon = True
+        self.brightness_thread.start()
 
 
 if __name__ == '__main__':
     c = Camera()
     c.stream_brightness()
+
+    while True:
+        pass
