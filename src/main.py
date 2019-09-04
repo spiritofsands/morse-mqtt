@@ -8,7 +8,6 @@ import morse_talk as mtalk
 def encode_pulses(line):
     # Convert line to morse code binary encoding
     bin_enc = mtalk.encode(line.strip(), encoding_type='binary')
-    print(bin_enc)
 
     # Convert binary encoding to a pulse sequence. We can just use something dumb for the timestamps for now.
     timestamps = [0]
