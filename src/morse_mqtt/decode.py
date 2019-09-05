@@ -29,22 +29,78 @@ def classify_pulses(pulses):
     return pulses, gaps
 
 
+def decode_char(char_binary):
+    char_str = ''.join(map(str, char_binary))
+    try:
+        return mtalk.decode(char_str, encoding_type='binary')
+    except KeyError:
+        return '*'
+
+def decode_text(pulses, gaps):
+    word_gap = 7
+
+    word_starts = [
+        (word_end + 1) for word_end, gap in enumerate(gaps) if gap == word_gap
+    ]
+
+    current = 0
+    word_pulses = []
+    word_gaps = []
+    for start in word_starts:
+        word_pulses.append(pulses[current:start])
+        word_gaps.append(gaps[current:start])
+        current = start
+    word_pulses.append(pulses[current:])
+    word_gaps.append(gaps[current:])
+
+    result = ''
+    for pulse, gap in zip(word_pulses, word_gaps):
+        if result:
+            result = result + ' '
+        decoded_word = decode_word(pulse, gap)
+        result = result + decoded_word
+
+    return result
+
+
+def decode_word(pulses, gaps):
+    char_gap = 3
+    pulse_gap = 1
+
+    char_starts = [
+        (char_end + 1) for char_end, gap in enumerate(gaps) if gap == char_gap
+    ]
+
+    current = 0
+    chars = []
+    for start in char_starts:
+        chars.append(pulses[current:start])
+        current = start
+    chars.append(pulses[current:])
+
+    word = ''
+    for char in chars:
+        binary_char = []
+        for pulse in char:
+            binary_char.extend([1] * pulse)
+            binary_char.extend([0] * pulse_gap)
+
+        # strip last excess zero if so
+        if char:
+            binary_char = binary_char[:-1]
+        char = decode_char(binary_char)
+        # realtime printing
+        # print('@@@' + char)
+        word = word + char
+
+    return word
+
 def decode_pulses(pulses):
     pulses, gaps = classify_pulses(pulses)
     assert (len(pulses) == len(gaps) + 1)
 
-    binary_encoding = []
-    for x, y in zip(pulses[:-1], gaps):
-        binary_encoding.extend([1] * x)
-        binary_encoding.extend([0] * y)
-    binary_encoding.extend([1] * pulses[-1])
-
-    try:
-        return mtalk.decode(''.join(map(str, binary_encoding)),
-                            encoding_type='binary')
-    except KeyError:
-        print(binary_encoding)
-        return 'Err: decode failure'
+    text = decode_text(pulses, gaps)
+    return text
 
 
 if __name__ == "__main__":
