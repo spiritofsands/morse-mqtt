@@ -4,12 +4,13 @@ from queue import Queue
 from threading import Thread
 from time import sleep
 
-from morse_mqtt.mqtt_recevier import MqttReceiver
+from morse_mqtt.receiver import MqttReceiver
+from morse_mqtt.decode import Pulse, decode_pulses
 
 
 def receiver(host, topic, queue):
-    mqtt_recevier = MqttReceiver(host, topic, queue)
-    mqtt_recevier.connect_loop()
+    receiver = MqttReceiver(host, topic, queue)
+    receiver.connect_loop()
 
 
 # SAMPLE READER
@@ -17,7 +18,13 @@ def reader(timeout, queue):
     print("Reader started")
     while True:
         timestamps = queue.get()
-        print(timestamps)
+
+        # Ignore the value and use the timestamps to create pulses
+        timestamps = (a for (a, b) in timestamps)
+        timestamps = [iter(timestamps)] * 2
+        pulses = [Pulse(x, y) for (x, y) in zip(*timestamps)]
+
+        print(decode_pulses(pulses))
 
 
 def main():

@@ -20,7 +20,7 @@ def encode_pulses(line):
             timestamps.append(i)
 
     # Add the timestamp of the last falling edge
-    timestamps.append(i + 1)
+    timestamps.append(len(bin_enc))
 
     # Group in pairs and create a pulse sequence
     timestamps = [iter(timestamps)] * 2

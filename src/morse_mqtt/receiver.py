@@ -34,7 +34,7 @@ class MqttReceiver:
 
     def _on_message(self, _client, _userdata, msg):
         self.timer.cancel()
-        self.events.append({time(): msg.payload})
+        self.events.append((time(), msg.payload))
         self.timer = Timer(1, lambda: self._message_complete())
         self.timer.start()
 
